@@ -13,30 +13,42 @@ export default class ProductList extends Component {
             products:[],//当前页面展示的商品列表数
             visible:false,//模态框的显示与隐藏
             product:{},//被修改的对象
-            totalNum: 0,//商品总条数
-            PageSize:10
+            totalNum: 20,//商品总条数
+            pageSize:10,
+            searchName:''
         }
     }
     componentDidMount(){
         this.getList()
     }
     /**
-     * @description 获取商品数据列表
+     * @description 获取所有商品数据列表
      * @param {*} searchName 搜索框输入的值 pageSize 一页的条数 pageIndex 当前页
      * @memberof ProductList
      */
-    getList=(searchName='',pageSize=this.state.PageSize,pageIndex=this.state.pageIndex)=>{
+    getList=()=>{
         fetch('/mock.json')
         .then((res) => {return res.json();})
         .then((data) => {
-            const  products=data.products.filter(item=>item.name.indexOf(searchName)>-1)
             this.setState({
                 productList:data.products,
-                products: products.slice((pageIndex-1)*pageSize,pageSize*pageIndex),
-                totalNum:products.length,
             })
+            this.getCurrentProducts()
         })
        .catch((e) => {console.log(e.message);});
+    }
+    /**
+     * @description  获取当前页面的商品列表
+     * @date 2020-06-18
+     * @param {string} [searchName='']
+     * @memberof ProductList
+     */
+    getCurrentProducts(searchName=''){
+        const { pageSize, pageIndex, productList}=this.state
+        const searchResult=productList.filter(item=>item.name&&item.name.indexOf(searchName)>-1).slice((pageIndex-1)*pageSize,pageSize*pageIndex)
+        this.setState({
+            products:searchResult
+        })
     }
     /**
      * @description 点击编辑按钮触发
@@ -68,14 +80,14 @@ export default class ProductList extends Component {
      * @memberof ProductList
      */
     changePrice=()=>{
-        const total=this.state.products.slice(0);
-        total.forEach(item=>{
-            if(item.id===this.state.product.id){
-                return item.price=this.state.product.price
+        const { productList, product}=this.state
+        productList.some(item=>{
+            if(item.id===product.id){
+                item.price=product.price
+                return true
             }
         })
         this.setState({
-            products:total,
             visible:false
         })
     }
@@ -85,29 +97,23 @@ export default class ProductList extends Component {
      * @memberof ProductList
      */
     del=(id)=>{
-        const pageIndex=this.state.pageIndex
-        const pageSize=this.state.PageSize
+        const { productList }=this.state
         const arr=[id]
-        const otherProducts=this.state.productList.filter(item=> {return !arr.includes(item.id)})
+        const otherProducts=productList.filter(item=> {return !arr.includes(item.id)})
         this.setState({
-            products:otherProducts.slice((pageIndex-1)*pageSize,pageSize*pageIndex),
             productList:otherProducts,
             totalNum:otherProducts.length
-        })    
+        },()=>this.getCurrentProducts())
     }
     /**
      * @description 页码发生改变
      * @param {*} pageIndex 当前所在页码
      * @memberof ProductList
      */
-    changePize=(pageIndex)=>{
-    
-        const products=this.state.productList.slice(0)
-        const pageSize=this.state.PageSize
+    changePage=(pageIndex)=>{
         this.setState({
-            products: products.slice((pageIndex-1)*pageSize,pageSize*pageIndex),
-            pageIndex:pageIndex
-        })
+            pageIndex
+        },()=>this.getCurrentProducts())
     }
     render() {
         const { products, visible, product,totalNum, pageIndex, PageSize}=this.state
@@ -115,7 +121,7 @@ export default class ProductList extends Component {
             <div>
                 <Head/>
                 <Search
-                    search={this.getList.bind(this)}
+                    search={this.getCurrentProducts.bind(this)}
                 />
                 <Table 
                     products={products}
@@ -130,7 +136,7 @@ export default class ProductList extends Component {
                 />
                 <Pagination
                     totalNum={totalNum}
-                    changePize={this.changePize}
+                    changePize={this.changePage}
                     pageIndex={pageIndex}
                     PageSize={PageSize}
                 />
